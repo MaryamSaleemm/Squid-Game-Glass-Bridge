@@ -206,7 +206,7 @@ def _handle_user_login_or_registration(username, email, password):
             print(f"DEBUG: User '{username}' (email: {email}) not found. Attempting to register new user.")
             # User does not exist, insert new user
             db_cursor.execute("INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
-                           (username, email, password))
+                             (username, email, password))
             db_connection.commit()
             print(f"DEBUG: New user '{username}' (email: {email}) registered successfully and changes committed.")
             messagebox.showinfo("Registration Successful", "New account created and logged in!")
@@ -344,14 +344,15 @@ def show_player_selection():
     for widget in root.winfo_children():
         widget.destroy()
 
-    player_bg_path =  "C:\\Users\\DELL\\OneDrive\\Desktop\\Downloads\\GBG\\Images\\playerSelection GBG.jpg"
+    player_bg_path = "C:\\Users\\DELL\\OneDrive\\Desktop\\Downloads\\GBG\\Images\\playerSelection GBG.jpg"
+    # Load for the left frame, which is half the screen width
     bg_photo = load_image(player_bg_path, screen_width // 2, screen_height)
 
     left_frame = Frame(root, width=screen_width // 2, height=screen_height)
     left_frame.pack(side="left", fill="both")
 
     if bg_photo:
-        bg_label = Label(left_frame, image=bg_photo)
+        bg_label = Label(left_frame, image=bg_photo, bg='black') # Set background color
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         bg_label.image = bg_photo
     else:
@@ -423,7 +424,7 @@ def show_final_screen():
 
     global final_bg # Keep a reference
     # NOTE: Absolute path used for image. Consider changing to a relative path or providing images in the same directory.
-    final_bg_path =  "C:\\Users\\DELL\\OneDrive\\Desktop\\Downloads\\GBG\\Images\\Rules_GBG.jpg"
+    final_bg_path = "C:\\Users\\DELL\\OneDrive\\Desktop\\Downloads\\GBG\\Images\\Rules_GBG.jpg"
     final_bg = load_image(final_bg_path, screen_width, screen_height)
     if final_bg:
         bg_label = Label(root, image=final_bg) # Corrected: Use final_bg instead of bg_photo
@@ -447,7 +448,7 @@ def show_final_screen():
     ○ Players take turns to cross the bridge, one at a time.
 
 ● Falling Means You're Out:
-    ○  If you step on weak glass, you fall and are eliminated.
+    ○   If you step on weak glass, you fall and are eliminated.
 
 ● Be Quick:
     ○ There's a time limit to reach the other side.
@@ -496,7 +497,6 @@ def show_final_screen():
     )
     back_button.place(relx=0.01, rely=0.95, anchor='sw')
 
-
 def start_game():
     """
     Initiates the Panda3D game.
@@ -518,7 +518,7 @@ class Player:
     Represents a single player character in the Glass Bridge game.
     Handles player model creation, movement, and status.
     """
-    def __init__(self, name, start_pos, game_instance, head_color, body_color):
+    def __init__(self, name, start_pos, game_instance, head_color, body_color, player_id): # Added player_id
         self.name = name
         self.game = game_instance
         self.current_tile_row = -1  # Starts before the first bridge tile (on the starting platform)
@@ -530,50 +530,24 @@ class Player:
         self.is_on_bridge = False # True if player is on any tile of the bridge
         # Create the player's segmented model
         self.np = self._create_character_model(start_pos, head_color=head_color, body_color=body_color)
-        self.np.reparentTo(self.game.render) # <--- ADDED: Reparent player model to the scene
-        print(f"DEBUG: Player {self.name} initialized at start_pos: {start_pos}")
+        self.np.reparentTo(self.game.render) # Reparent player model to the scene
 
-    @staticmethod
-    def _create_character_model(pos, head_size=0.6, torso_width=0.8, torso_depth=0.5, torso_height=1.0,
-                             limb_width=0.3, limb_depth=0.3, arm_length=0.7, leg_length=0.8,
-                             head_color=VBase4(1, 0.8, 0, 1), body_color=VBase4(0, 0.5, 1, 1)):
-        """
-        Creates a segmented character model (head, torso, arms, legs) from cubes.
-        The character_root's Z=0 is designed to be the bottom of the character's feet.
-        This is a static method to be reused for both Players and Staff.
-        """
-        character_root = NodePath("character_root")
-        # Legs (base at Z=0 of the character_root)
-        left_leg = Player._create_cube(limb_width, limb_depth, leg_length, body_color)
-        left_leg.setPos(-(torso_width / 4), 0, leg_length / 2)
-        left_leg.reparentTo(character_root)
-        right_leg = Player._create_cube(limb_width, limb_depth, leg_length, body_color)
-        right_leg.setPos(torso_width / 4, 0, leg_length / 2)
-        right_leg.reparentTo(character_root)
-        # Torso (base at Z=leg_length)
-        torso = Player._create_cube(torso_width, torso_depth, torso_height, body_color)
-        torso.setPos(0, 0, leg_length + torso_height / 2)
-        torso.reparentTo(character_root)
-        # Arms (attached to torso, positioned relative to character_root's Z=0)
-        left_arm = Player._create_cube(limb_width, limb_depth, arm_length, body_color)
-        left_arm.setPos(-(torso_width / 2 + limb_width / 2), 0, leg_length + torso_height * 0.7)
-        left_arm.reparentTo(character_root)
-        right_arm = Player._create_cube(limb_width, limb_depth, arm_length, body_color)
-        right_arm.setPos(torso_width / 2 + limb_width / 2, 0, leg_length + torso_height * 0.7)
-        right_arm.reparentTo(character_root)
-        # Head (base at Z=leg_length + torso_height)
-        head = Player._create_cube(head_size, head_size, head_size, head_color)
-        head.setPos(0, 0, leg_length + torso_height + head_size / 2)
-        head.reparentTo(character_root)
-        character_root.setPos(pos)
-        character_root.setScale(0.8) # Overall scale for the entire character model
-        
-        material = Material()
-        material.setDiffuse(VBase4(0.8, 0.8, 0.8, 1))
-        material.setSpecular(VBase4(0.5, 0.5, 0.5, 1))
-        material.setShininess(50.0)
-        character_root.setMaterial(material)
-        return character_root
+        # Create TextNode for player name and ID
+        self.name_text = TextNode(f'{name}_name_text')
+        self.name_text.setText(f"{name}\n{player_id}") # Combine name and ID
+        self.name_text.setAlign(TextNode.ACenter)
+        self.name_text.setTextColor(1, 1, 1, 1) # White color
+        self.name_text.setCardDecal(True) # Make text appear on top of geometry
+        self.name_text_np = self.np.attachNewNode(self.name_text)
+        # Position slightly above the head. Character height is approx leg_length + torso_height + head_size
+        # The character_root's Z=0 is the feet. Head is at leg_length + torso_height + head_size / 2
+        # So, text should be a bit above that.
+        head_top_z = 0.8 + 1.0 + 0.6/2 # Approx values from _create_character_model
+        self.name_text_np.setPos(0, 0, head_top_z + 0.5) # Adjust Z offset as needed
+        self.name_text_np.setScale(0.5) # Scale relative to character model. Will be affected by self.np.setScale(0.8)
+
+
+        print(f"DEBUG: Player {self.name} initialized at start_pos: {start_pos}")
 
     @staticmethod
     def _create_cube(sx, sy, sz, color):
@@ -636,6 +610,48 @@ class Player:
         node.addGeom(geom)
         np = NodePath(node)
         return np
+
+    @staticmethod
+    def _create_character_model(pos, head_size=0.6, torso_width=0.8, torso_depth=0.5, torso_height=1.0,
+                                 limb_width=0.3, limb_depth=0.3, arm_length=0.7, leg_length=0.8,
+                                 head_color=VBase4(1, 0.8, 0, 1), body_color=VBase4(0, 0.5, 1, 1)):
+        """
+        Creates a segmented character model (head, torso, arms, legs) from cubes.
+        The character_root's Z=0 is designed to be the bottom of the character's feet.
+        This is a static method to be reused for both Players and Staff.
+        """
+        character_root = NodePath("character_root")
+        # Legs (base at Z=0 of the character_root)
+        left_leg = Player._create_cube(limb_width, limb_depth, leg_length, body_color)
+        left_leg.setPos(-(torso_width / 4), 0, leg_length / 2)
+        left_leg.reparentTo(character_root)
+        right_leg = Player._create_cube(limb_width, limb_depth, leg_length, body_color)
+        right_leg.setPos(torso_width / 4, 0, leg_length / 2)
+        right_leg.reparentTo(character_root)
+        # Torso (base at Z=leg_length)
+        torso = Player._create_cube(torso_width, torso_depth, torso_height, body_color)
+        torso.setPos(0, 0, leg_length + torso_height / 2)
+        torso.reparentTo(character_root)
+        # Arms (attached to torso, positioned relative to character_root's Z=0)
+        left_arm = Player._create_cube(limb_width, limb_depth, arm_length, body_color)
+        left_arm.setPos(-(torso_width / 2 + limb_width / 2), 0, leg_length + torso_height * 0.7)
+        left_arm.reparentTo(character_root)
+        right_arm = Player._create_cube(limb_width, limb_depth, arm_length, body_color)
+        right_arm.setPos(torso_width / 2 + limb_width / 2, 0, leg_length + torso_height * 0.7)
+        right_arm.reparentTo(character_root)
+        # Head (base at Z=leg_length + torso_height)
+        head = Player._create_cube(head_size, head_size, head_size, head_color)
+        head.setPos(0, 0, leg_length + torso_height + head_size / 2)
+        head.reparentTo(character_root)
+        character_root.setPos(pos)
+        character_root.setScale(0.8) # Overall scale for the entire character model
+        
+        material = Material()
+        material.setDiffuse(VBase4(0.8, 0.8, 0.8, 1))
+        material.setSpecular(VBase4(0.5, 0.5, 0.5, 1))
+        material.setShininess(50.0)
+        character_root.setMaterial(material)
+        return character_root
 
     def move_to_tile(self, row, col):
         """
@@ -736,7 +752,7 @@ class Player:
             broken_tile_info['np'].setTransparency(TransparencyAttrib.M_alpha)
             broken_tile_info['np'].setColor(Vec4(0.2, 0.2, 0.2, 0.3)) # Make it look broken/darker
             fall_tile_interval = broken_tile_info['np'].posInterval(0.5, LPoint3(broken_tile_info['x'], broken_tile_info['y'], -5),
-                                                                     startPos=broken_tile_info['np'].getPos())
+                                                                    startPos=broken_tile_info['np'].getPos())
             fall_tile_interval.start()
 
         fall_interval = Sequence(
@@ -750,7 +766,7 @@ class Staff:
     Represents a staff character in the Glass Bridge game.
     Handles staff model creation, positioning, and patrolling behavior.
     """
-    def __init__(self, name, role, start_pos, game_instance, color):
+    def __init__(self, name, role, start_pos, game_instance, color, staff_id): # Added staff_id
         self.name = name
         self.role = role
         self.game = game_instance
@@ -758,6 +774,19 @@ class Staff:
         # Create staff model using the shared static method
         self.np = Player._create_character_model(start_pos, head_color=color, body_color=color)
         self.np.reparentTo(self.game.render) # Add staff to the scene
+
+        # Create TextNode for staff name and ID
+        self.name_text = TextNode(f'{name}_name_text')
+        self.name_text.setText(f"{name}\n{staff_id}") # Combine name and ID
+        self.name_text.setAlign(TextNode.ACenter)
+        self.name_text.setTextColor(1, 1, 1, 1) # White color
+        self.name_text.setCardDecal(True)
+        self.name_text_np = self.np.attachNewNode(self.name_text)
+        head_top_z = 0.8 + 1.0 + 0.6/2 # Approx values from _create_character_model
+        self.name_text_np.setPos(0, 0, head_top_z + 0.5) # Adjust Z offset as needed
+        self.name_text_np.setScale(0.5) # Scale relative to character model
+
+
         print(f"DEBUG: Staff {self.name} ({self.role}) initialized at start_pos: {start_pos}")
 
         if self.role == "Guard":
@@ -1056,7 +1085,6 @@ class GlassBridgeScene(ShowBase):
             (0,0,1), (0,0,1), (0,0,1), (0,0,1),     # Top
             (0,0,-1), (0,0,-1), (0,0,-1), (0,0,-1) # Bottom
         ]
-
         texcoords = [
             (0,0), (1,0), (1,1), (0,1),
             (0,0), (1,0), (1,1), (0,1),
@@ -1206,16 +1234,30 @@ class GlassBridgeScene(ShowBase):
         player_start_y = self.bridge_start_y - (self.tile_width * 1.5)
         player_z_on_platform = self.tile_depth # Players stand on top of the platform
 
+        # Define character data with names and IDs for easy lookup
+        char_data_map = {c[0]: c for c in [
+            ("Joon-ho", "P1", "player"), ("Sang-woo", "P2", "player"),
+            ("Sae-byeok", "P3", "player"), ("Il-nam", "P4", "player"),
+            ("Ali", "P5", "player"), ("Mi-nyeo", "P6", "player"),
+            ("Gi-hun", "P7", "player"), ("Front Man", "S1", "staff"),
+            ("Square Guard", "SG", "staff"), ("Triangle Guard", "TG", "staff"),
+            ("Circle Guard", "CG", "staff"),
+        ]}
+
         # Calculate player starting positions to spread them out on the platform
-        num_players_per_row = 4 # Max players per row on the starting platform
-        player_spacing_x = self.tile_width / (num_players_per_row + 1)
-        player_spacing_y = self.tile_width / 2
+        # Based on the image, aiming for 3 players per row with specific X offsets
+        player_x_positions = [-1.0, 0.0, 1.0] # X positions for players in a row
+        player_spacing_y = self.tile_width / 2 # Vertical spacing between rows
 
         for i, player_name in enumerate(player_names_for_game):
-            row_idx = i // num_players_per_row
-            col_idx = i % num_players_per_row
-            
-            x_offset = (col_idx - (num_players_per_row - 1) / 2) * player_spacing_x
+            # Get player_id from char_data_map
+            char_info = char_data_map.get(player_name)
+            player_id = char_info[1] if char_info else f"P{i+1}" # Fallback if name not in map
+
+            row_idx = i // len(player_x_positions) # Arrange in rows based on player_x_positions length
+            col_idx = i % len(player_x_positions)
+
+            x_offset = player_x_positions[col_idx]
             y_offset = row_idx * player_spacing_y 
 
             body_color = player_colors[i % len(player_colors)] # Cycle through the defined colors
@@ -1223,10 +1265,10 @@ class GlassBridgeScene(ShowBase):
 
             start_pos = LPoint3(x_offset, player_start_y + y_offset, player_z_on_platform)
             
-            player = Player(player_name, start_pos, self, head_color=head_color, body_color=body_color)
+            player = Player(player_name, start_pos, self, head_color=head_color, body_color=body_color, player_id=player_id) # Pass player_id
             self.players.append(player)
             self.active_players_queue.append(player) # All players are active initially (added to deque)
-            print(f"DEBUG (setup_characters): Player {player.name} added to active_players_queue.")
+            print(f"DEBUG (setup_characters): Player {player.name} ({player_id}) added to active_players_queue.")
 
         # --- Setup Staff ---
         staff_colors = {
@@ -1241,10 +1283,13 @@ class GlassBridgeScene(ShowBase):
 
         for staff_name in self.selected_staff_names:
             staff_color = staff_colors.get(staff_name, VBase4(0.5, 0.5, 0.5, 1.0)) # Default grey if not found
+            char_info = char_data_map.get(staff_name)
+            staff_id = char_info[1] if char_info else "S_ID" # Fallback if name not in map
+
             if staff_name == "Front Man":
                 # Position Front Man on the end platform
                 front_man_pos = LPoint3(0, self.end_platform_y, self.tile_depth) # On top of the end platform
-                front_man = Staff(staff_name, "Front Man", front_man_pos, self, staff_color)
+                front_man = Staff(staff_name, "Front Man", front_man_pos, self, staff_color, staff_id=staff_id) # Pass staff_id
                 self.staff_members.append(front_man)
                 print(f"DEBUG (setup_characters): Front Man placed at {front_man_pos}.")
             elif staff_name in ["Square Guard", "Triangle Guard", "Circle Guard"]:
@@ -1253,7 +1298,7 @@ class GlassBridgeScene(ShowBase):
                 guard_start_y = self.bridge_start_y - self.tile_width * 0.5 # Start near beginning of bridge
                 guard_pos = LPoint3(patrol_x, guard_start_y, self.tile_depth)
                 
-                guard = Staff(staff_name, "Guard", guard_pos, self, staff_color)
+                guard = Staff(staff_name, "Guard", guard_pos, self, staff_color, staff_id=staff_id) # Pass staff_id
                 self.staff_members.append(guard)
                 guard_index += 1
                 print(f"DEBUG (setup_characters): Guard {staff_name} placed at {guard_pos} for patrol.")
@@ -1393,14 +1438,15 @@ class GlassBridgeScene(ShowBase):
         if self.current_player.current_tile_row == -1: # Only reset visual position for players who haven't started
             player_start_y = self.bridge_start_y - (self.tile_width * 1.5)
             player_z_on_platform = self.tile_depth
-            num_players_per_row = 4
-            player_spacing_x = self.tile_width / (num_players_per_row + 1)
-            player_spacing_y = self.tile_width / 2
             
+            # Re-calculate player starting positions based on the updated logic
+            player_x_positions = [-1.0, 0.0, 1.0] # X positions for players in a row
+            player_spacing_y = self.tile_width / 2 # Vertical spacing between rows
+
             player_idx_in_all_players = self.players.index(self.current_player)
-            row_idx = player_idx_in_all_players // num_players_per_row
-            col_idx = player_idx_in_all_players % num_players_per_row
-            x_offset = (col_idx - (num_players_per_row - 1) / 2) * player_spacing_x
+            row_idx = player_idx_in_all_players // len(player_x_positions)
+            col_idx = player_idx_in_all_players % len(player_x_positions)
+            x_offset = player_x_positions[col_idx]
             y_offset = row_idx * player_spacing_y 
             start_pos = LPoint3(x_offset, player_start_y + y_offset, player_z_on_platform)
             self.current_player.np.setPos(start_pos)
@@ -1447,7 +1493,7 @@ class GlassBridgeScene(ShowBase):
                 if r_idx not in self.revealed_safe_path and r_idx not in self.revealed_broken_path:
                     # Animate the tile falling
                     fall_tile_interval = tile_info['np'].posInterval(0.5, LPoint3(tile_info['x'], tile_info['y'], -5),
-                                                                    startPos=tile_info['np'].getPos())
+                                                                     startPos=tile_info['np'].getPos())
                     # Also make it look broken/darker and transparent as it falls
                     tile_info['np'].setTransparency(TransparencyAttrib.M_alpha)
                     tile_info['np'].setColor(Vec4(0.2, 0.2, 0.2, 0.3)) 
@@ -1456,7 +1502,7 @@ class GlassBridgeScene(ShowBase):
                     # If the other tile in this row was safe, but this one wasn't revealed, it must be the broken one
                     # This handles cases where a player stepped on the safe one, leaving the other unrevealed.
                     fall_tile_interval = tile_info['np'].posInterval(0.5, LPoint3(tile_info['x'], tile_info['y'], -5),
-                                                                    startPos=tile_info['np'].getPos())
+                                                                     startPos=tile_info['np'].getPos())
                     tile_info['np'].setTransparency(TransparencyAttrib.M_alpha)
                     tile_info['np'].setColor(Vec4(0.2, 0.2, 0.2, 0.3)) 
                     fall_tile_interval.start()
@@ -1575,6 +1621,7 @@ def on_closing():
         db_connection.close()
         print("DEBUG: Database connection closed on application exit.")
     root.destroy()
+
 
 
 if __name__ == '__main__':
